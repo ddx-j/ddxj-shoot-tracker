@@ -11,8 +11,8 @@
   :root {
     --ink: #1c1a17;
     --paper: #f7f4ee;
-    --tape: #d6501f;
-    --tape-dim: #f0d9cd;
+    --tape: #ABB1FF;
+    --tape-dim: #e8e9ff;
     --line: #d9d3c7;
     --mono: 'Courier New', monospace;
     --serif: Georgia, 'Times New Roman', serif;
@@ -105,7 +105,7 @@
   .rate-btn.active {
     background: var(--tape);
     border-color: var(--tape);
-    color: #fff;
+    color: var(--ink);
   }
   .rate-btn small { display: block; font-size: 10px; opacity: 0.75; margin-top: 2px; }
   .rate-btn.floor { position: relative; }
@@ -173,6 +173,26 @@
     text-decoration: underline;
     padding: 0;
   }
+  .session-date-row {
+    margin-bottom: 10px;
+  }
+  .session-date-row label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #8a8375;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .session-date-row input[type="date"] {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--paper);
+  }
+
   .time-row {
     display: flex;
     gap: 10px;
@@ -228,7 +248,7 @@
   .punch-btn.running {
     background: var(--tape);
     border-color: var(--tape);
-    color: #fff;
+    color: var(--ink);
     animation: pulse 1.6s ease-in-out infinite;
   }
   @keyframes pulse {
@@ -238,8 +258,23 @@
   .punch-live {
     font-family: var(--mono);
     font-size: 13px;
-    color: var(--tape);
+    color: #6b70c9;
     font-weight: bold;
+  }
+  .clear-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 10px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    background: none;
+    color: #a3392f;
+    cursor: pointer;
+  }
+  .clear-btn:hover {
+    border-color: #a3392f;
   }
 
   .add-btn {
@@ -302,17 +337,18 @@
     border: 2px solid var(--tape);
     border-radius: 4px;
     background: var(--tape);
-    color: #fff;
+    color: var(--ink);
     cursor: pointer;
     text-transform: uppercase;
   }
   .export-btn.secondary {
     background: var(--ink);
     border-color: var(--ink);
+    color: #fff;
   }
-  .export-btn:hover { background: #b8420f; border-color: #b8420f; }
+  .export-btn:hover { background: #8f96f2; border-color: #8f96f2; }
   .export-btn.secondary:hover { background: #34302a; border-color: #34302a; }
-  .export-btn.copied { background: #4a463e; border-color: #4a463e; }
+  .export-btn.copied { background: #4a463e; border-color: #4a463e; color: #fff; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -364,9 +400,27 @@ function fmtElapsed(ms) {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+function fmt12Hour(time24) {
+  if (!time24) return '';
+  const [h, m] = time24.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 function todayStr() {
   const d = new Date();
   return d.toISOString().slice(0, 10);
+}
+
+function fmtFilenameDate(dateStr) {
+  const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day}${month}_${year}`;
 }
 
 function App() {
@@ -375,8 +429,8 @@ function App() {
   const [rate, setRate] = useState(50);
   const [floorRate, setFloorRate] = useState(40);
   const [sessions, setSessions] = useState([
-    { id: 1, label: 'Shoot', start: '', end: '' },
-    { id: 2, label: 'Edit — session 1', start: '', end: '' },
+    { id: 1, label: 'Shoot', start: '', end: '', date: todayStr() },
+    { id: 2, label: 'Edit — session 1', start: '', end: '', date: todayStr() },
   ]);
   const [nextId, setNextId] = useState(3);
   const [copied, setCopied] = useState(false);
@@ -398,8 +452,15 @@ function App() {
         return { ...s, end: nowTimeStr(), runningSince: null };
       }
       // punching in
-      return { ...s, start: nowTimeStr(), end: '', runningSince: Date.now() };
+      return { ...s, start: nowTimeStr(), end: '', runningSince: Date.now(), date: todayStr() };
     }));
+  };
+
+  const handleClear = (id) => {
+    setSessions(prev => prev.map(s => s.id === id
+      ? { ...s, start: '', end: '', runningSince: null }
+      : s
+    ));
   };
 
   const updateSession = (id, field, value) => {
@@ -407,7 +468,7 @@ function App() {
   };
 
   const addSession = () => {
-    setSessions(prev => [...prev, { id: nextId, label: `Edit — session ${prev.length}`, start: '', end: '', runningSince: null }]);
+    setSessions(prev => [...prev, { id: nextId, label: `Edit — session ${prev.length}`, start: '', end: '', runningSince: null, date: todayStr() }]);
     setNextId(n => n + 1);
   };
 
@@ -433,7 +494,7 @@ function App() {
     lines.push('');
     computed.forEach(s => {
       if (s.raw > 0) {
-        lines.push(`${s.label}: ${s.start}–${s.end} → ${fmtHours(s.rounded)}`);
+        lines.push(`${s.label} (${s.date || 'no date'}): ${fmt12Hour(s.start)}–${fmt12Hour(s.end)} → ${fmtHours(s.rounded)}`);
       } else {
         lines.push(`${s.label}: (no time logged)`);
       }
@@ -468,12 +529,13 @@ function App() {
     rows.push(['Project', projectTitle || 'Untitled Project']);
     rows.push(['Date', projectDate || todayStr()]);
     rows.push([]);
-    rows.push(['Session', 'Start', 'End', 'Raw Hours', 'Rounded Hours']);
+    rows.push(['Session', 'Date Worked', 'Start', 'End', 'Raw Hours', 'Rounded Hours']);
     computed.forEach(s => {
       rows.push([
         s.label,
-        s.start || '',
-        s.end || '',
+        s.date || '',
+        s.start ? fmt12Hour(s.start) : '',
+        s.end ? fmt12Hour(s.end) : '',
         s.raw > 0 ? s.raw.toFixed(2) : '',
         s.raw > 0 ? s.rounded : '',
       ]);
@@ -490,9 +552,8 @@ function App() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const safeTitle = (projectTitle || 'shoot-log').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
     a.href = url;
-    a.download = `${safeTitle}-${projectDate || todayStr()}.csv`;
+    a.download = `${fmtFilenameDate(projectDate)}_hours.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -518,7 +579,7 @@ function App() {
           />
         </div>
         <div className="project-field">
-          <label>Date</label>
+          <label>Invoice Date</label>
           <input
             type="date"
             value={projectDate}
@@ -570,6 +631,14 @@ function App() {
               <button className="remove-btn" onClick={() => removeSession(s.id)}>remove</button>
             )}
           </div>
+          <div className="session-date-row">
+            <label>Date worked</label>
+            <input
+              type="date"
+              value={s.date || ''}
+              onChange={e => updateSession(s.id, 'date', e.target.value)}
+            />
+          </div>
           <div className="time-row">
             <div className="time-field">
               <label>Start</label>
@@ -587,12 +656,16 @@ function App() {
             >
               {s.runningSince ? 'punch out' : 'punch in'}
             </button>
+            <button className="clear-btn" onClick={() => handleClear(s.id)}>
+              clear
+            </button>
             {s.runningSince && (
               <span className="punch-live">{fmtElapsed(now - s.runningSince)} elapsed</span>
             )}
           </div>
           {s.raw > 0 && (
             <div className="session-result">
+              {fmt12Hour(s.start)} – {fmt12Hour(s.end)}<br/>
               Raw: {s.raw.toFixed(2)} hr → Rounded: <strong>{fmtHours(s.rounded)}</strong>
             </div>
           )}
@@ -628,6 +701,8 @@ function App() {
       <div className="rounding-note">
         Rounding rule: 0–15 min down · 16–45 min → nearest half hour · 46–60 min up.<br/>
         "Punch in" grabs the current time as Start; "punch out" grabs it as End — or just type times manually.<br/>
+        "Clear" resets that session's start/end times if you need to redo a punch.<br/>
+        Each session has its own "Date worked" — useful when edit sessions span multiple days.<br/>
         Entries are editable any time — click into any field to change it.<br/>
         "Download CSV" opens directly in Excel, Numbers, or Google Sheets.<br/>
         This tracker resets if you close or reload the tab — export before you leave.
