@@ -90,6 +90,32 @@
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
+    align-items: stretch;
+  }
+  .invoice-num-field {
+    flex: 0 0 76px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .invoice-num-field label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #8a8375;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .invoice-num-field input {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 9px 8px;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+    text-align: center;
   }
   .rate-btn {
     flex: 1;
@@ -396,6 +422,64 @@
   .export-btn:hover { background: #8f96f2; border-color: #8f96f2; }
   .export-btn.secondary:hover { background: #34302a; border-color: #34302a; }
   .export-btn.copied { background: #4a463e; border-color: #4a463e; color: #fff; }
+
+  .history-toggle {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px;
+    border: none;
+    background: none;
+    color: #6b655a;
+    cursor: pointer;
+    text-align: center;
+    margin-top: 6px;
+  }
+  .history-toggle:hover { color: var(--ink); }
+  .history-list {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+    margin-top: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .history-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .hi-left { color: #6b655a; }
+  .history-item .hi-left strong { color: var(--ink); display: block; font-size: 12px; margin-bottom: 2px; }
+  .history-item .hi-right { text-align: right; white-space: nowrap; font-weight: bold; color: var(--ink); }
+  .history-empty {
+    padding: 16px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #8a8375;
+    text-align: center;
+  }
+  .history-clear {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #a3392f;
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -466,10 +550,9 @@ function todayStr() {
 function fmtFilenameDate(dateStr) {
   const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
   const day = String(d.getDate()).padStart(2, '0');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const month = months[d.getMonth()];
+  const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
-  return `${day}${month}_${year}`;
+  return `${day}${month}${year}`;
 }
 
 function App() {
@@ -484,6 +567,15 @@ function App() {
       return 1011;
     }
   });
+  const [exportHistory, setExportHistory] = useState(() => {
+    try {
+      const stored = localStorage.getItem('shootTrackerExportHistory');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [showHistory, setShowHistory] = useState(false);
   const [rate, setRate] = useState(50);
   const [floorRate, setFloorRate] = useState(40);
   const [sessions, setSessions] = useState([
@@ -640,17 +732,35 @@ function App() {
       </html>`;
   };
 
+  const logExport = (entry) => {
+    setExportHistory(prev => {
+      const updated = [{ ...entry, loggedAt: Date.now() }, ...prev].slice(0, 100);
+      try {
+        localStorage.setItem('shootTrackerExportHistory', JSON.stringify(updated));
+      } catch (e) { /* ignore */ }
+      return updated;
+    });
+  };
+
   const handleExportExcel = () => {
     const html = buildStyledExcel();
     const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${fmtFilenameDate(projectDate)}_hours.xls`;
+    a.download = `${fmtFilenameDate(projectDate)}_invoice_${invoiceNumber}.xls`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    logExport({
+      type: 'Excel',
+      project: projectTitle || 'Untitled Project',
+      date: projectDate || todayStr(),
+      hours: totalRounded,
+      rate,
+      total: totalCost,
+    });
   };
 
   const handleDownloadInvoicePDF = () => {
@@ -748,6 +858,15 @@ function App() {
     doc.text(`$${totalCost.toFixed(0)}`, rightX, finalY + 44, { align: 'right' });
 
     doc.save(`${fmtFilenameDate(projectDate)}_invoice_${invoiceNumber}.pdf`);
+    logExport({
+      type: 'PDF Invoice',
+      project: projectTitle || 'Untitled Project',
+      date: projectDate || todayStr(),
+      invoiceNum: invoiceNumber,
+      hours: totalRounded,
+      rate,
+      total: totalCost,
+    });
     finalize();
   };
 
@@ -786,7 +905,10 @@ function App() {
             onChange={e => setProjectDate(e.target.value)}
           />
         </div>
-        <div className="project-field">
+      </div>
+
+      <div className="rate-row">
+        <div className="invoice-num-field">
           <label>Invoice #</label>
           <input
             type="number"
@@ -794,9 +916,6 @@ function App() {
             onChange={e => setInvoiceNumber(Number(e.target.value) || 0)}
           />
         </div>
-      </div>
-
-      <div className="rate-row">
         <button
           className={`rate-btn ${rate === 50 ? 'active' : ''}`}
           onClick={() => setRate(50)}
@@ -928,6 +1047,42 @@ function App() {
         </button>
       </div>
 
+      <button className="history-toggle" onClick={() => setShowHistory(v => !v)}>
+        {showHistory ? '▲ hide export history' : `▼ export history (${exportHistory.length})`}
+      </button>
+      {showHistory && (
+        <div className="history-list">
+          {exportHistory.length === 0 ? (
+            <div className="history-empty">No exports yet on this device.</div>
+          ) : (
+            exportHistory.map((h, i) => (
+              <div className="history-item" key={i}>
+                <div className="hi-left">
+                  <strong>{h.project}{h.invoiceNum ? ` — #${h.invoiceNum}` : ''}</strong>
+                  {h.type} · {h.date}
+                </div>
+                <div className="hi-right">
+                  {fmtHours(h.hours)}<br/>${h.total.toFixed(0)}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+      {showHistory && exportHistory.length > 0 && (
+        <button
+          className="history-clear"
+          onClick={() => {
+            if (window.confirm('Clear all export history on this device?')) {
+              setExportHistory([]);
+              try { localStorage.removeItem('shootTrackerExportHistory'); } catch (e) { /* ignore */ }
+            }
+          }}
+        >
+          clear history
+        </button>
+      )}
+
       <div className="rounding-note">
         Rounding rule: 0–15 min down · 16–45 min → nearest half hour · 46–60 min up.<br/>
         "Punch in" grabs the current time as Start; "punch out" grabs it as End — or just type times manually.<br/>
@@ -937,6 +1092,7 @@ function App() {
         Entries are editable any time — click into any field to change it.<br/>
         "Download Excel" opens directly in Excel, Numbers, or Google Sheets, with a styled header.<br/>
         "Download PDF Invoice" saves the invoice directly as a PDF — no print dialog needed.<br/>
+        "Export history" remembers past exports on this device/browser only — not synced elsewhere.<br/>
         This tracker resets if you close or reload the tab — export before you leave.
       </div>
     </div>
