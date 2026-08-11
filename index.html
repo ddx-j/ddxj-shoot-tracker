@@ -298,6 +298,29 @@
   .clear-btn:hover {
     border-color: #a3392f;
   }
+  .break-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 10px;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    background: none;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .break-btn.on-break {
+    background: #e8a33d;
+    border-color: #e8a33d;
+    color: var(--ink);
+  }
+  .break-live {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #b8791f;
+    font-weight: bold;
+  }
 
   .add-btn {
     width: 100%;
@@ -451,11 +474,19 @@ function App() {
   const [projectTitle, setProjectTitle] = useState('');
   const [projectDate, setProjectDate] = useState(todayStr());
   const [billedTo, setBilledTo] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState(() => {
+    try {
+      const stored = localStorage.getItem('shootTrackerNextInvoiceNumber');
+      return stored ? Number(stored) : 1011;
+    } catch (e) {
+      return 1011;
+    }
+  });
   const [rate, setRate] = useState(50);
   const [floorRate, setFloorRate] = useState(40);
   const [sessions, setSessions] = useState([
-    { id: 1, label: 'Shoot', start: '', end: '', date: todayStr(), notes: '' },
-    { id: 2, label: 'Edit — session 1', start: '', end: '', date: todayStr(), notes: '' },
+    { id: 1, label: 'Shoot', start: '', end: '', date: todayStr(), notes: '', onBreak: false, breakStart: null, breakMs: 0 },
+    { id: 2, label: 'Edit — session 1', start: '', end: '', date: todayStr(), notes: '', onBreak: false, breakStart: null, breakMs: 0 },
   ]);
   const [nextId, setNextId] = useState(3);
   const [copied, setCopied] = useState(false);
@@ -473,17 +504,34 @@ function App() {
     setSessions(prev => prev.map(s => {
       if (s.id !== id) return s;
       if (s.runningSince) {
-        // punching out
-        return { ...s, end: nowTimeStr(), runningSince: null };
+        // punching out — close out any active break first
+        let finalBreakMs = s.breakMs || 0;
+        if (s.onBreak && s.breakStart) {
+          finalBreakMs += Date.now() - s.breakStart;
+        }
+        return { ...s, end: nowTimeStr(), runningSince: null, onBreak: false, breakStart: null, breakMs: finalBreakMs };
       }
       // punching in
-      return { ...s, start: nowTimeStr(), end: '', runningSince: Date.now(), date: todayStr() };
+      return { ...s, start: nowTimeStr(), end: '', runningSince: Date.now(), date: todayStr(), onBreak: false, breakStart: null, breakMs: 0 };
+    }));
+  };
+
+  const handleBreak = (id) => {
+    setSessions(prev => prev.map(s => {
+      if (s.id !== id || !s.runningSince) return s;
+      if (s.onBreak) {
+        // resume — add elapsed break time
+        const addedMs = s.breakStart ? Date.now() - s.breakStart : 0;
+        return { ...s, onBreak: false, breakStart: null, breakMs: (s.breakMs || 0) + addedMs };
+      }
+      // start break
+      return { ...s, onBreak: true, breakStart: Date.now() };
     }));
   };
 
   const handleClear = (id) => {
     setSessions(prev => prev.map(s => s.id === id
-      ? { ...s, start: '', end: '', runningSince: null }
+      ? { ...s, start: '', end: '', runningSince: null, onBreak: false, breakStart: null, breakMs: 0 }
       : s
     ));
   };
@@ -493,7 +541,7 @@ function App() {
   };
 
   const addSession = () => {
-    setSessions(prev => [...prev, { id: nextId, label: `Edit — session ${prev.length}`, start: '', end: '', runningSince: null, date: todayStr(), notes: '' }]);
+    setSessions(prev => [...prev, { id: nextId, label: `Edit — session ${prev.length}`, start: '', end: '', runningSince: null, date: todayStr(), notes: '', onBreak: false, breakStart: null, breakMs: 0 }]);
     setNextId(n => n + 1);
   };
 
@@ -503,7 +551,9 @@ function App() {
 
   const computed = useMemo(() => {
     return sessions.map(s => {
-      const raw = diffHours(s.start, s.end);
+      let raw = diffHours(s.start, s.end);
+      const breakHours = (s.breakMs || 0) / 3600000;
+      raw = Math.max(0, raw - breakHours);
       const rounded = raw > 0 ? round(raw) : 0;
       return { ...s, raw, rounded };
     });
@@ -623,20 +673,21 @@ function App() {
         <meta charset="UTF-8">
         <title>Invoice — ${escapeHTML(projectTitle || 'Untitled Project')}</title>
         <style>
-          body { font-family: Georgia, 'Times New Roman', serif; color: ${ink}; padding: 30px; max-width: 700px; margin: 0 auto; }
+          body { font-family: Arial, Helvetica, sans-serif; color: ${ink}; padding: 30px; max-width: 700px; margin: 0 auto; }
           .inv-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid ${accent}; padding-bottom: 14px; margin-bottom: 20px; }
-          .inv-title { font-family: 'Courier New', monospace; font-size: 26px; letter-spacing: 2px; font-weight: bold; margin: 0; }
-          .inv-meta { text-align: right; font-family: 'Courier New', monospace; font-size: 12px; }
-          .inv-parties { margin-bottom: 24px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; }
+          .inv-title { font-family: Arial, Helvetica, sans-serif; font-size: 26px; letter-spacing: 2px; font-weight: bold; margin: 0; }
+          .inv-meta { text-align: right; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
+          .inv-parties { margin-bottom: 24px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.6; }
           .inv-parties strong { display: block; font-size: 13px; margin-bottom: 3px; }
+          .inv-from { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th { background: ${accent}; color: ${ink}; font-family: 'Courier New', monospace; font-size: 11px; text-transform: uppercase; text-align: left; padding: 8px 10px; }
-          td { font-size: 13px; padding: 8px 10px; border-bottom: 1px solid ${line}; }
+          th { background: ${accent}; color: ${ink}; font-family: Arial, Helvetica, sans-serif; font-size: 11px; text-transform: uppercase; text-align: left; padding: 8px 10px; }
+          td { font-family: Arial, Helvetica, sans-serif; font-size: 13px; padding: 8px 10px; border-bottom: 1px solid ${line}; }
           .inv-totals { display: flex; justify-content: flex-end; }
-          .inv-totals-box { width: 260px; font-family: 'Courier New', monospace; font-size: 13px; }
+          .inv-totals-box { width: 260px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; }
           .inv-totals-box .row { display: flex; justify-content: space-between; padding: 4px 0; }
           .inv-totals-box .row.final { border-top: 2px solid ${ink}; margin-top: 6px; padding-top: 8px; font-size: 18px; font-weight: bold; }
-          .print-btn { font-family: 'Courier New', monospace; font-size: 13px; padding: 10px 18px; background: ${ink}; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
+          .print-btn { font-family: Arial, Helvetica, sans-serif; font-size: 13px; padding: 10px 18px; background: ${ink}; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
           @media print { .print-btn { display: none; } }
         </style>
       </head>
@@ -645,10 +696,12 @@ function App() {
         <div class="inv-header">
           <h1 class="inv-title">INVOICE</h1>
           <div class="inv-meta">
+            Invoice #: ${invoiceNumber}<br/>
             Date: ${escapeHTML(projectDate || todayStr())}<br/>
             Project: ${escapeHTML(projectTitle || 'Untitled Project')}
           </div>
         </div>
+        <div class="inv-from">Deanna Jackson</div>
         <div class="inv-parties">
           <strong>Billed To</strong>
           ${escapeHTML(billedTo || '—')}
@@ -669,14 +722,18 @@ function App() {
       </body>
       </html>`;
 
-    const win = window.open('', '_blank');
-    if (win) {
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-    } else {
+    const blob = new Blob([html], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(blobUrl, '_blank');
+    if (!win) {
       window.alert('Please allow pop-ups to view the invoice.');
+      return;
     }
+    const nextNum = invoiceNumber + 1;
+    try {
+      localStorage.setItem('shootTrackerNextInvoiceNumber', String(nextNum));
+    } catch (e) { /* ignore */ }
+    setInvoiceNumber(nextNum);
   };
 
   return (
@@ -712,6 +769,14 @@ function App() {
             type="date"
             value={projectDate}
             onChange={e => setProjectDate(e.target.value)}
+          />
+        </div>
+        <div className="project-field">
+          <label>Invoice #</label>
+          <input
+            type="number"
+            value={invoiceNumber}
+            onChange={e => setInvoiceNumber(Number(e.target.value) || 0)}
           />
         </div>
       </div>
@@ -784,13 +849,24 @@ function App() {
             >
               {s.runningSince ? 'punch out' : 'punch in'}
             </button>
+            {s.runningSince && (
+              <button
+                className={`break-btn ${s.onBreak ? 'on-break' : ''}`}
+                onClick={() => handleBreak(s.id)}
+              >
+                {s.onBreak ? 'resume' : 'break'}
+              </button>
+            )}
             <button className="clear-btn" onClick={() => handleClear(s.id)}>
               clear
             </button>
-            {s.runningSince && (
-              <span className="punch-live">{fmtElapsed(now - s.runningSince)} elapsed</span>
-            )}
           </div>
+          {s.runningSince && !s.onBreak && (
+            <div className="punch-live">{fmtElapsed(now - s.runningSince - (s.breakMs || 0))} elapsed</div>
+          )}
+          {s.runningSince && s.onBreak && (
+            <div className="break-live">on break — {fmtElapsed(now - s.breakStart)}</div>
+          )}
           {s.raw > 0 && (
             <div className="session-result">
               {fmt12Hour(s.start)} – {fmt12Hour(s.end)}<br/>
@@ -840,7 +916,8 @@ function App() {
       <div className="rounding-note">
         Rounding rule: 0–15 min down · 16–45 min → nearest half hour · 46–60 min up.<br/>
         "Punch in" grabs the current time as Start; "punch out" grabs it as End — or just type times manually.<br/>
-        "Clear" resets that session's start/end times if you need to redo a punch.<br/>
+        "Break" pauses the timer without ending the session; "resume" picks back up — break time is subtracted from your total automatically.<br/>
+        "Clear" resets that session's start/end/break data if you need to redo a punch.<br/>
         Each session has its own "Date worked" and a Notes field for quick comments.<br/>
         Entries are editable any time — click into any field to change it.<br/>
         "Download Excel" opens directly in Excel, Numbers, or Google Sheets, with a styled header.<br/>
