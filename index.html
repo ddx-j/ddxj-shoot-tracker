@@ -400,6 +400,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script type="text/babel">
 const { useState, useMemo, useEffect } = React;
 
@@ -651,89 +653,102 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handlePrintInvoice = () => {
-    const accent = '#ABB1FF';
-    const ink = '#1c1a17';
-    const line = '#d9d3c7';
-    const rowsHTML = computed.filter(s => s.raw > 0).map(s => `
-      <tr>
-        <td>${escapeHTML(s.date || '')}</td>
-        <td>${escapeHTML(s.label)}</td>
-        <td>${escapeHTML(fmtHours(s.rounded))}</td>
-        <td>$${rate}/hr</td>
-        <td>$${(s.rounded * rate).toFixed(0)}</td>
-      </tr>
-      ${s.notes ? `<tr><td></td><td colspan="4" style="font-size:11px;color:#6b655a;font-style:italic;padding-top:0;">${escapeHTML(s.notes)}</td></tr>` : ''}
-    `).join('');
+  const handleDownloadInvoicePDF = () => {
+    const nextNum = invoiceNumber + 1;
+    const finalize = () => {
+      try {
+        localStorage.setItem('shootTrackerNextInvoiceNumber', String(nextNum));
+      } catch (e) { /* ignore */ }
+      setInvoiceNumber(nextNum);
+    };
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Invoice — ${escapeHTML(projectTitle || 'Untitled Project')}</title>
-        <style>
-          body { font-family: Arial, Helvetica, sans-serif; color: ${ink}; padding: 30px; max-width: 700px; margin: 0 auto; }
-          .inv-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid ${accent}; padding-bottom: 14px; margin-bottom: 20px; }
-          .inv-title { font-family: Arial, Helvetica, sans-serif; font-size: 26px; letter-spacing: 2px; font-weight: bold; margin: 0; }
-          .inv-meta { text-align: right; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
-          .inv-parties { margin-bottom: 24px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.6; }
-          .inv-parties strong { display: block; font-size: 13px; margin-bottom: 3px; }
-          .inv-from { font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th { background: ${accent}; color: ${ink}; font-family: Arial, Helvetica, sans-serif; font-size: 11px; text-transform: uppercase; text-align: left; padding: 8px 10px; }
-          td { font-family: Arial, Helvetica, sans-serif; font-size: 13px; padding: 8px 10px; border-bottom: 1px solid ${line}; }
-          .inv-totals { display: flex; justify-content: flex-end; }
-          .inv-totals-box { width: 260px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; }
-          .inv-totals-box .row { display: flex; justify-content: space-between; padding: 4px 0; }
-          .inv-totals-box .row.final { border-top: 2px solid ${ink}; margin-top: 6px; padding-top: 8px; font-size: 18px; font-weight: bold; }
-          .print-btn { font-family: Arial, Helvetica, sans-serif; font-size: 13px; padding: 10px 18px; background: ${ink}; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
-          @media print { .print-btn { display: none; } }
-        </style>
-      </head>
-      <body>
-        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
-        <div class="inv-header">
-          <h1 class="inv-title">INVOICE</h1>
-          <div class="inv-meta">
-            Invoice #: ${invoiceNumber}<br/>
-            Date: ${escapeHTML(projectDate || todayStr())}<br/>
-            Project: ${escapeHTML(projectTitle || 'Untitled Project')}
-          </div>
-        </div>
-        <div class="inv-from">Deanna Jackson</div>
-        <div class="inv-parties">
-          <strong>Billed To</strong>
-          ${escapeHTML(billedTo || '—')}
-        </div>
-        <table>
-          <thead>
-            <tr><th>Date</th><th>Description</th><th>Hours</th><th>Rate</th><th>Amount</th></tr>
-          </thead>
-          <tbody>${rowsHTML}</tbody>
-        </table>
-        <div class="inv-totals">
-          <div class="inv-totals-box">
-            <div class="row"><span>Total Hours</span><span>${fmtHours(totalRounded)}</span></div>
-            <div class="row"><span>Rate</span><span>$${rate}/hr</span></div>
-            <div class="row final"><span>Total Due</span><span>$${totalCost.toFixed(0)}</span></div>
-          </div>
-        </div>
-      </body>
-      </html>`;
-
-    const blob = new Blob([html], { type: 'text/html' });
-    const blobUrl = URL.createObjectURL(blob);
-    const win = window.open(blobUrl, '_blank');
-    if (!win) {
-      window.alert('Please allow pop-ups to view the invoice.');
+    if (!window.jspdf) {
+      window.alert('PDF library did not load — check your connection and try again.');
       return;
     }
-    const nextNum = invoiceNumber + 1;
-    try {
-      localStorage.setItem('shootTrackerNextInvoiceNumber', String(nextNum));
-    } catch (e) { /* ignore */ }
-    setInvoiceNumber(nextNum);
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    const accent = [171, 177, 255];
+    const ink = [28, 26, 23];
+    const gray = [107, 101, 90];
+    const margin = 40;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(24);
+    doc.setTextColor(...ink);
+    doc.text('INVOICE', margin, 55);
+    doc.setDrawColor(...accent);
+    doc.setLineWidth(2.5);
+    doc.line(margin, 65, doc.internal.pageSize.getWidth() - margin, 65);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...gray);
+    const rightX = doc.internal.pageSize.getWidth() - margin;
+    doc.text(`Invoice #: ${invoiceNumber}`, rightX, 30, { align: 'right' });
+    doc.text(`Date: ${projectDate || todayStr()}`, rightX, 43, { align: 'right' });
+    doc.text(`Project: ${projectTitle || 'Untitled Project'}`, rightX, 56, { align: 'right' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...ink);
+    doc.text('Deanna Jackson', margin, 90);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...gray);
+    doc.text('Billed To', margin, 112);
+    doc.setTextColor(...ink);
+    doc.setFontSize(11);
+    doc.text(billedTo || '—', margin, 126);
+
+    const tableRows = [];
+    computed.filter(s => s.raw > 0).forEach(s => {
+      let desc = s.label;
+      if (s.notes) desc += `\n${s.notes}`;
+      tableRows.push([
+        s.date || '',
+        desc,
+        fmtHours(s.rounded),
+        `$${rate}/hr`,
+        `$${(s.rounded * rate).toFixed(0)}`,
+      ]);
+    });
+
+    doc.autoTable({
+      startY: 145,
+      margin: { left: margin, right: margin },
+      head: [['Date', 'Description', 'Hours', 'Rate', 'Amount']],
+      body: tableRows,
+      styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: accent, textColor: ink, fontStyle: 'bold', fontSize: 9 },
+      bodyStyles: { textColor: ink },
+      alternateRowStyles: { fillColor: [247, 244, 238] },
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 20;
+    const boxX = doc.internal.pageSize.getWidth() - margin - 200;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(...ink);
+    doc.text('Total Hours', boxX, finalY);
+    doc.text(fmtHours(totalRounded), rightX, finalY, { align: 'right' });
+    doc.text('Rate', boxX, finalY + 16);
+    doc.text(`$${rate}/hr`, rightX, finalY + 16, { align: 'right' });
+
+    doc.setDrawColor(...ink);
+    doc.setLineWidth(1);
+    doc.line(boxX, finalY + 26, rightX, finalY + 26);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text('Total Due', boxX, finalY + 44);
+    doc.text(`$${totalCost.toFixed(0)}`, rightX, finalY + 44, { align: 'right' });
+
+    doc.save(`${fmtFilenameDate(projectDate)}_invoice_${invoiceNumber}.pdf`);
+    finalize();
   };
 
   return (
@@ -908,8 +923,8 @@ function App() {
         <button className="export-btn secondary" onClick={handleExportExcel}>
           download excel
         </button>
-        <button className="export-btn secondary" onClick={handlePrintInvoice}>
-          export pdf invoice
+        <button className="export-btn secondary" onClick={handleDownloadInvoicePDF}>
+          download pdf invoice
         </button>
       </div>
 
@@ -921,7 +936,7 @@ function App() {
         Each session has its own "Date worked" and a Notes field for quick comments.<br/>
         Entries are editable any time — click into any field to change it.<br/>
         "Download Excel" opens directly in Excel, Numbers, or Google Sheets, with a styled header.<br/>
-        "Export PDF Invoice" opens the invoice in a new tab — use your browser's print/share option and choose "Save as PDF."<br/>
+        "Download PDF Invoice" saves the invoice directly as a PDF — no print dialog needed.<br/>
         This tracker resets if you close or reload the tab — export before you leave.
       </div>
     </div>
