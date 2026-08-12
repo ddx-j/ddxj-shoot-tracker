@@ -56,6 +56,73 @@
     color: #6b655a;
     margin: 0;
   }
+  .import-toggle {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px;
+    border: 2px dashed var(--line);
+    border-radius: 4px;
+    background: none;
+    color: #6b655a;
+    cursor: pointer;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .import-toggle:hover { border-color: var(--tape); color: var(--tape); }
+  .import-panel {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+  }
+  .import-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #8a8375;
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .import-panel textarea {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--paper);
+    resize: vertical;
+    min-height: 120px;
+  }
+  .import-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .import-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 16px;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    background: var(--ink);
+    color: #fff;
+    cursor: pointer;
+  }
+  .import-btn:hover { background: #34302a; }
+  .import-msg {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 8px;
+  }
+  .import-msg.error { color: #a3392f; }
+  .import-msg.success { color: #3d7a4d; }
+
   .project-row {
     display: flex;
     flex-wrap: wrap;
@@ -555,6 +622,96 @@ function fmtFilenameDate(dateStr) {
   return `${day}${month}${year}`;
 }
 
+function parseTime12(str) {
+  const m = str.trim().match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if (!m) return '';
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  const period = m[3].toUpperCase();
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${min}`;
+}
+
+function parseSummaryText(text) {
+  const lines = text.replace(/\r\n/g, '\n').split('\n').map(l => l.replace(/\s+$/, ''));
+  let idx = 0;
+  const nextNonBlank = () => {
+    while (idx < lines.length && lines[idx].trim() === '') idx++;
+    return idx < lines.length ? lines[idx] : null;
+  };
+
+  const titleLineRaw = nextNonBlank();
+  if (titleLineRaw === null) return { error: 'Could not find a project title line — make sure you pasted the full summary.' };
+  const projectTitle = titleLineRaw.trim() === 'Untitled Project' ? '' : titleLineRaw.trim();
+  idx++;
+
+  const invLineRaw = nextNonBlank();
+  if (invLineRaw === null) return { error: 'Could not find the invoice ID line (expected something like "10082026_invoice_1011").' };
+  const invMatch = invLineRaw.trim().match(/^(\d{2})(\d{2})(\d{4})_invoice_(\d+)$/);
+  if (!invMatch) return { error: 'Second line didn\'t match the expected "DDMMYYYY_invoice_#" format.' };
+  const [, dd, mm, yyyy, invNumStr] = invMatch;
+  const projectDate = `${yyyy}-${mm}-${dd}`;
+  const invoiceNumber = Number(invNumStr);
+  idx++;
+
+  const sessions = [];
+  let rate = null;
+  let lastSession = null;
+
+  const sessionTimeRe = /^(.+?) \((.+?)\): (.+?)–(.+?) → .+$/;
+  const sessionNoTimeRe = /^(.+?): \(no time logged\)$/;
+  const noteRe = /^\s+note:\s*(.+)$/;
+  const totalRe = /^Total:.*@\s*\$([\d.]+)\/hr\s*=/;
+
+  for (; idx < lines.length; idx++) {
+    const line = lines[idx];
+    if (line.trim() === '') continue;
+
+    const totalMatch = line.match(totalRe);
+    if (totalMatch) {
+      rate = Number(totalMatch[1]);
+      continue;
+    }
+
+    const noteMatch = line.match(noteRe);
+    if (noteMatch && lastSession) {
+      lastSession.notes = noteMatch[1].trim();
+      continue;
+    }
+
+    const timeMatch = line.match(sessionTimeRe);
+    if (timeMatch) {
+      const [, label, dateStr, startStr, endStr] = timeMatch;
+      const sess = {
+        label: label.trim(),
+        date: dateStr.trim() === 'no date' ? '' : dateStr.trim(),
+        start: parseTime12(startStr),
+        end: parseTime12(endStr),
+        notes: '',
+      };
+      sessions.push(sess);
+      lastSession = sess;
+      continue;
+    }
+
+    const noTimeMatch = line.match(sessionNoTimeRe);
+    if (noTimeMatch) {
+      const sess = { label: noTimeMatch[1].trim(), date: '', start: '', end: '', notes: '' };
+      sessions.push(sess);
+      lastSession = sess;
+      continue;
+    }
+    // unrecognized line — skip it rather than failing the whole import
+  }
+
+  if (sessions.length === 0) {
+    return { error: 'No session lines were recognized — make sure you pasted the full "copy summary" text.' };
+  }
+
+  return { projectTitle, projectDate, invoiceNumber, rate, sessions };
+}
+
 function App() {
   const [projectTitle, setProjectTitle] = useState('');
   const [projectDate, setProjectDate] = useState(todayStr());
@@ -585,6 +742,9 @@ function App() {
   const [nextId, setNextId] = useState(3);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [showImport, setShowImport] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [importMsg, setImportMsg] = useState(null);
 
   const anyRunning = sessions.some(s => s.runningSince);
 
@@ -684,6 +844,64 @@ function App() {
       // fallback: select-and-copy not available, just show the text
       window.prompt('Copy this summary:', text);
     }
+  };
+
+  const handleImport = () => {
+    const result = parseSummaryText(pasteText);
+    if (result.error) {
+      setImportMsg({ type: 'error', text: result.error });
+      return;
+    }
+
+    const hasExistingData = projectTitle || billedTo || sessions.some(s => s.start || s.end || s.notes);
+    if (hasExistingData) {
+      const ok = window.confirm(
+        `Import this timecard?\n\nThis will replace your current project details and sessions below with ${result.sessions.length} imported session(s).`
+      );
+      if (!ok) return;
+    }
+
+    setProjectTitle(result.projectTitle);
+    setProjectDate(result.projectDate || todayStr());
+
+    if (result.rate != null) {
+      if (result.rate === 50) {
+        setRate(50);
+      } else {
+        setFloorRate(result.rate);
+        setRate(result.rate);
+      }
+    }
+
+    const newSessions = result.sessions.map((s, i) => ({
+      id: nextId + i,
+      label: s.label,
+      start: s.start,
+      end: s.end,
+      date: s.date,
+      notes: s.notes,
+      runningSince: null,
+      onBreak: false,
+      breakStart: null,
+      breakMs: 0,
+    }));
+    setSessions(newSessions);
+    setNextId(id => id + result.sessions.length);
+
+    if (result.invoiceNumber && result.invoiceNumber !== invoiceNumber) {
+      const setInv = window.confirm(
+        `This timecard was originally Invoice #${result.invoiceNumber}. Your current next-invoice number is #${invoiceNumber}.\n\n` +
+        `Set the invoice number back to #${result.invoiceNumber}?`
+      );
+      if (setInv) {
+        setInvoiceNumber(result.invoiceNumber);
+        try { localStorage.setItem('shootTrackerNextInvoiceNumber', String(result.invoiceNumber)); } catch (e) { /* ignore */ }
+      }
+    }
+
+    setImportMsg({ type: 'success', text: `Imported ${result.sessions.length} session(s).` });
+    setPasteText('');
+    setShowImport(false);
   };
 
   const escapeHTML = (val) => String(val)
@@ -896,6 +1114,28 @@ function App() {
         <h1>Shoot & Edit Log</h1>
         <p>Track sessions below — hours round to the nearest half hour, then multiply by your rate.</p>
       </div>
+
+      <button className="import-toggle" onClick={() => { setShowImport(v => !v); setImportMsg(null); }}>
+        {showImport ? '▲ hide import' : '▼ import a past timecard'}
+      </button>
+      {showImport && (
+        <div className="import-panel">
+          <div className="import-hint">
+            Paste the text from "copy summary" (from a previous export) below — it'll refill the project, date, rate, and sessions.
+          </div>
+          <textarea
+            placeholder="Paste copied summary here..."
+            value={pasteText}
+            onChange={e => setPasteText(e.target.value)}
+          />
+          <div className="import-actions">
+            <button className="import-btn" onClick={handleImport}>Import</button>
+          </div>
+          {importMsg && (
+            <div className={`import-msg ${importMsg.type}`}>{importMsg.text}</div>
+          )}
+        </div>
+      )}
 
       <div className="project-row">
         <div className="project-field">
