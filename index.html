@@ -765,6 +765,24 @@ function App() {
   };
 
   const handleDownloadInvoicePDF = () => {
+    const alreadyUsed = exportHistory.some(
+      h => h.type === 'PDF Invoice' && Number(h.invoiceNum) === Number(invoiceNumber)
+    );
+
+    if (alreadyUsed) {
+      const proceedAnyway = window.confirm(
+        `Heads up — Invoice #${invoiceNumber} was already used for a previous PDF export.\n\n` +
+        `Click OK to re-download it anyway (same number), or Cancel to fix the invoice number first.`
+      );
+      if (!proceedAnyway) return;
+    } else {
+      const confirmed = window.confirm(
+        `Generate PDF for Invoice #${invoiceNumber}?\n\n` +
+        `After this download, the invoice number will move to #${invoiceNumber + 1} for next time.`
+      );
+      if (!confirmed) return;
+    }
+
     const nextNum = invoiceNumber + 1;
     const finalize = () => {
       try {
