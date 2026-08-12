@@ -659,7 +659,7 @@ function App() {
   const buildSummary = () => {
     const lines = [];
     lines.push(projectTitle ? projectTitle : 'Untitled Project');
-    lines.push(projectDate || todayStr());
+    lines.push(`${fmtFilenameDate(projectDate)}_invoice_${invoiceNumber}`);
     lines.push('');
     computed.forEach(s => {
       if (s.raw > 0) {
@@ -710,6 +710,7 @@ function App() {
       <body style="font-family:Calibri, Arial, sans-serif;">
         <table border="0" cellspacing="0" cellpadding="6">
           <tr><td style="font-size:16px;font-weight:bold;color:${ink};" colspan="6">${escapeHTML(projectTitle || 'Untitled Project')}</td></tr>
+          <tr><td style="font-weight:bold;">Invoice #</td><td colspan="5">${escapeHTML(invoiceNumber)}</td></tr>
           <tr><td style="font-weight:bold;">Billed To</td><td colspan="5">${escapeHTML(billedTo || '')}</td></tr>
           <tr><td style="font-weight:bold;">Invoice Date</td><td colspan="5">${escapeHTML(projectDate || todayStr())}</td></tr>
           <tr><td colspan="6"></td></tr>
@@ -815,11 +816,10 @@ function App() {
 
     const tableRows = [];
     computed.filter(s => s.raw > 0).forEach(s => {
-      let desc = s.label;
-      if (s.notes) desc += `\n${s.notes}`;
       tableRows.push([
         s.date || '',
-        desc,
+        s.label,
+        s.notes || '',
         fmtHours(s.rounded),
         `$${rate}/hr`,
         `$${(s.rounded * rate).toFixed(0)}`,
@@ -829,12 +829,13 @@ function App() {
     doc.autoTable({
       startY: 145,
       margin: { left: margin, right: margin },
-      head: [['Date', 'Description', 'Hours', 'Rate', 'Amount']],
+      head: [['Date Worked', 'Description', 'Notes', 'Hours', 'Rate', 'Amount']],
       body: tableRows,
       styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
       headStyles: { fillColor: accent, textColor: ink, fontStyle: 'bold', fontSize: 9 },
       bodyStyles: { textColor: ink },
       alternateRowStyles: { fillColor: [247, 244, 238] },
+      columnStyles: { 2: { textColor: gray, fontStyle: 'italic' } },
     });
 
     const finalY = doc.lastAutoTable.finalY + 20;
