@@ -56,22 +56,44 @@
     color: #6b655a;
     margin: 0;
   }
+  .toolbar-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
   .import-toggle {
     width: 100%;
     font-family: var(--mono);
-    font-size: 11px;
-    text-transform: uppercase;
+    font-size: 14px;
+    font-weight: bold;
     letter-spacing: 0.5px;
-    padding: 10px;
-    border: 2px dashed var(--line);
+    text-transform: uppercase;
+    padding: 16px;
+    border: 2px solid var(--ink);
     border-radius: 4px;
-    background: none;
-    color: #6b655a;
+    background: var(--tape-dim);
+    color: var(--ink);
     cursor: pointer;
     text-align: center;
-    margin-bottom: 14px;
   }
-  .import-toggle:hover { border-color: var(--tape); color: var(--tape); }
+  .import-toggle:hover { background: var(--tape); color: #fff; border-color: var(--tape); }
+  .new-timecard-btn {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 16px;
+    border: 2px solid #a3392f;
+    border-radius: 4px;
+    background: none;
+    color: #a3392f;
+    cursor: pointer;
+    text-align: center;
+  }
+  .new-timecard-btn:hover { background: #a3392f; color: #fff; }
   .import-panel {
     border: 1px solid var(--line);
     border-radius: 4px;
@@ -123,14 +145,19 @@
   .import-msg.error { color: #a3392f; }
   .import-msg.success { color: #3d7a4d; }
 
+  .invoice-meta-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .invoice-meta-row .project-field { flex: 1; }
   .project-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-direction: column;
+    gap: 12px;
     margin-bottom: 20px;
   }
   .project-field { flex: 1; min-width: 120px; }
-  .project-field:first-child { flex: 1.6; }
   .project-field label {
     display: block;
     font-family: var(--mono);
@@ -152,37 +179,33 @@
     font-family: var(--mono);
     font-size: 13px;
   }
+  .project-field input[type="number"] {
+    font-family: var(--mono);
+    font-size: 14px;
+    text-align: center;
+    border: 2px solid var(--ink);
+    color: var(--ink);
+  }
+  .section-hr {
+    border: none;
+    border-top: 2px solid var(--ink);
+    margin: 22px 0 16px;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
 
   .rate-row {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
     align-items: stretch;
-  }
-  .invoice-num-field {
-    flex: 0 0 76px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  .invoice-num-field label {
-    display: block;
-    font-family: var(--mono);
-    font-size: 10px;
-    color: #8a8375;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-  .invoice-num-field input {
-    width: 100%;
-    font-family: var(--mono);
-    font-size: 14px;
-    padding: 9px 8px;
-    border: 2px solid var(--ink);
-    border-radius: 4px;
-    background: var(--paper);
-    color: var(--ink);
-    text-align: center;
   }
   .rate-btn {
     flex: 1;
@@ -267,10 +290,19 @@
     text-decoration: underline;
     padding: 0;
   }
-  .session-date-row {
+  .date-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
     margin-bottom: 10px;
   }
-  .session-date-row label {
+  .session-date-field {
+    flex: 1;
+    min-width: 130px;
+  }
+  .session-date-field label {
     display: block;
     font-family: var(--mono);
     font-size: 10px;
@@ -278,13 +310,20 @@
     text-transform: uppercase;
     margin-bottom: 4px;
   }
-  .session-date-row input[type="date"] {
+  .session-date-field input[type="date"] {
+    width: 100%;
     font-family: var(--mono);
     font-size: 13px;
-    padding: 6px 8px;
+    padding: 7px 8px;
     border: 1px solid var(--line);
     border-radius: 3px;
     background: var(--paper);
+  }
+  .session-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
   }
 
   .time-row {
@@ -342,18 +381,12 @@
     min-height: 40px;
   }
 
-  .punch-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-  }
   .punch-btn {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 8px 14px;
+    padding: 7px 10px;
     border: 2px solid var(--ink);
     border-radius: 4px;
     background: var(--paper);
@@ -381,7 +414,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 8px 10px;
+    padding: 7px 8px;
     border: 2px solid transparent;
     border-radius: 4px;
     background: none;
@@ -396,7 +429,7 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 8px 10px;
+    padding: 7px 8px;
     border: 2px solid var(--ink);
     border-radius: 4px;
     background: none;
@@ -712,10 +745,23 @@ function parseSummaryText(text) {
   return { projectTitle, projectDate, invoiceNumber, rate, sessions };
 }
 
+function loadSavedFormState() {
+  try {
+    const raw = localStorage.getItem('shootTrackerFormState');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
 function App() {
-  const [projectTitle, setProjectTitle] = useState('');
-  const [projectDate, setProjectDate] = useState(todayStr());
-  const [billedTo, setBilledTo] = useState('');
+  const saved = loadSavedFormState();
+  const [projectTitle, setProjectTitle] = useState(() => (saved && typeof saved.projectTitle === 'string') ? saved.projectTitle : '');
+  const [projectDate, setProjectDate] = useState(() => (saved && saved.projectDate) ? saved.projectDate : todayStr());
+  const [billedTo, setBilledTo] = useState(() => (saved && typeof saved.billedTo === 'string') ? saved.billedTo : '');
   const [invoiceNumber, setInvoiceNumber] = useState(() => {
     try {
       const stored = localStorage.getItem('shootTrackerNextInvoiceNumber');
@@ -733,13 +779,13 @@ function App() {
     }
   });
   const [showHistory, setShowHistory] = useState(false);
-  const [rate, setRate] = useState(50);
-  const [floorRate, setFloorRate] = useState(40);
-  const [sessions, setSessions] = useState([
+  const [rate, setRate] = useState(() => (saved && typeof saved.rate === 'number') ? saved.rate : 50);
+  const [floorRate, setFloorRate] = useState(() => (saved && typeof saved.floorRate === 'number') ? saved.floorRate : 40);
+  const [sessions, setSessions] = useState(() => (saved && Array.isArray(saved.sessions) && saved.sessions.length > 0) ? saved.sessions : [
     { id: 1, label: 'Shoot', start: '', end: '', date: todayStr(), notes: '', onBreak: false, breakStart: null, breakMs: 0 },
     { id: 2, label: 'Edit — session 1', start: '', end: '', date: todayStr(), notes: '', onBreak: false, breakStart: null, breakMs: 0 },
   ]);
-  const [nextId, setNextId] = useState(3);
+  const [nextId, setNextId] = useState(() => (saved && typeof saved.nextId === 'number') ? saved.nextId : 3);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [showImport, setShowImport] = useState(false);
@@ -753,6 +799,15 @@ function App() {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, [anyRunning]);
+
+  useEffect(() => {
+    try {
+      const toSave = { projectTitle, projectDate, billedTo, rate, floorRate, sessions, nextId };
+      localStorage.setItem('shootTrackerFormState', JSON.stringify(toSave));
+    } catch (e) {
+      // storage unavailable or full — fail silently, nothing to recover here
+    }
+  }, [projectTitle, projectDate, billedTo, rate, floorRate, sessions, nextId]);
 
   const handlePunch = (id) => {
     setSessions(prev => prev.map(s => {
@@ -1107,6 +1162,24 @@ function App() {
     finalize();
   };
 
+  const handleStartNewTimecard = () => {
+    const ok = window.confirm(
+      'Start a new timecard?\n\nThis clears the project info and all sessions below (does not affect your invoice number or export history).'
+    );
+    if (!ok) return;
+    setProjectTitle('');
+    setProjectDate(todayStr());
+    setBilledTo('');
+    setRate(50);
+    setFloorRate(40);
+    setSessions([
+      { id: 1, label: 'Shoot', start: '', end: '', date: todayStr(), notes: '', onBreak: false, breakStart: null, breakMs: 0 },
+      { id: 2, label: 'Edit — session 1', start: '', end: '', date: todayStr(), notes: '', onBreak: false, breakStart: null, breakMs: 0 },
+    ]);
+    setNextId(3);
+    try { localStorage.removeItem('shootTrackerFormState'); } catch (e) { /* ignore */ }
+  };
+
   return (
     <div>
       <div className="slate">
@@ -1115,9 +1188,12 @@ function App() {
         <p>Track sessions below — hours round to the nearest half hour, then multiply by your rate.</p>
       </div>
 
-      <button className="import-toggle" onClick={() => { setShowImport(v => !v); setImportMsg(null); }}>
-        {showImport ? '▲ hide import' : '▼ import a past timecard'}
-      </button>
+      <div className="toolbar-row">
+        <button className="import-toggle" onClick={() => { setShowImport(v => !v); setImportMsg(null); }}>
+          {showImport ? '▲ hide import' : '▼ import a past timecard'}
+        </button>
+        <button className="new-timecard-btn" onClick={handleStartNewTimecard}>start new timecard</button>
+      </div>
       {showImport && (
         <div className="import-panel">
           <div className="import-hint">
@@ -1136,6 +1212,25 @@ function App() {
           )}
         </div>
       )}
+
+      <div className="invoice-meta-row">
+        <div className="project-field">
+          <label>Invoice #</label>
+          <input
+            type="number"
+            value={invoiceNumber}
+            onChange={e => setInvoiceNumber(Number(e.target.value) || 0)}
+          />
+        </div>
+        <div className="project-field">
+          <label>Invoice Date</label>
+          <input
+            type="date"
+            value={projectDate}
+            onChange={e => setProjectDate(e.target.value)}
+          />
+        </div>
+      </div>
 
       <div className="project-row">
         <div className="project-field">
@@ -1156,25 +1251,9 @@ function App() {
             onChange={e => setBilledTo(e.target.value)}
           />
         </div>
-        <div className="project-field">
-          <label>Invoice Date</label>
-          <input
-            type="date"
-            value={projectDate}
-            onChange={e => setProjectDate(e.target.value)}
-          />
-        </div>
       </div>
 
       <div className="rate-row">
-        <div className="invoice-num-field">
-          <label>Invoice #</label>
-          <input
-            type="number"
-            value={invoiceNumber}
-            onChange={e => setInvoiceNumber(Number(e.target.value) || 0)}
-          />
-        </div>
         <button
           className={`rate-btn ${rate === 50 ? 'active' : ''}`}
           onClick={() => setRate(50)}
@@ -1205,6 +1284,9 @@ function App() {
         </button>
       </div>
 
+      <hr className="section-hr" />
+      <div className="section-label">Time Cards</div>
+
       {computed.map(s => (
         <div className="session" key={s.id}>
           <div className="session-head">
@@ -1217,14 +1299,41 @@ function App() {
               <button className="remove-btn" onClick={() => removeSession(s.id)}>remove</button>
             )}
           </div>
-          <div className="session-date-row">
-            <label>Date worked</label>
-            <input
-              type="date"
-              value={s.date || ''}
-              onChange={e => updateSession(s.id, 'date', e.target.value)}
-            />
+          <div className="date-actions-row">
+            <div className="session-date-field">
+              <label>Date worked</label>
+              <input
+                type="date"
+                value={s.date || ''}
+                onChange={e => updateSession(s.id, 'date', e.target.value)}
+              />
+            </div>
+            <div className="session-actions">
+              <button
+                className={`punch-btn ${s.runningSince ? 'running' : ''}`}
+                onClick={() => handlePunch(s.id)}
+              >
+                {s.runningSince ? 'punch out' : 'punch in'}
+              </button>
+              {s.runningSince && (
+                <button
+                  className={`break-btn ${s.onBreak ? 'on-break' : ''}`}
+                  onClick={() => handleBreak(s.id)}
+                >
+                  {s.onBreak ? 'resume' : 'break'}
+                </button>
+              )}
+              <button className="clear-btn" onClick={() => handleClear(s.id)}>
+                clear
+              </button>
+            </div>
           </div>
+          {s.runningSince && !s.onBreak && (
+            <div className="punch-live">{fmtElapsed(now - s.runningSince - (s.breakMs || 0))} elapsed</div>
+          )}
+          {s.runningSince && s.onBreak && (
+            <div className="break-live">on break — {fmtElapsed(now - s.breakStart)}</div>
+          )}
           <div className="time-row">
             <div className="time-field">
               <label>Start</label>
@@ -1235,31 +1344,6 @@ function App() {
               <input type="time" value={s.end} onChange={e => updateSession(s.id, 'end', e.target.value)} />
             </div>
           </div>
-          <div className="punch-row">
-            <button
-              className={`punch-btn ${s.runningSince ? 'running' : ''}`}
-              onClick={() => handlePunch(s.id)}
-            >
-              {s.runningSince ? 'punch out' : 'punch in'}
-            </button>
-            {s.runningSince && (
-              <button
-                className={`break-btn ${s.onBreak ? 'on-break' : ''}`}
-                onClick={() => handleBreak(s.id)}
-              >
-                {s.onBreak ? 'resume' : 'break'}
-              </button>
-            )}
-            <button className="clear-btn" onClick={() => handleClear(s.id)}>
-              clear
-            </button>
-          </div>
-          {s.runningSince && !s.onBreak && (
-            <div className="punch-live">{fmtElapsed(now - s.runningSince - (s.breakMs || 0))} elapsed</div>
-          )}
-          {s.runningSince && s.onBreak && (
-            <div className="break-live">on break — {fmtElapsed(now - s.breakStart)}</div>
-          )}
           {s.raw > 0 && (
             <div className="session-result">
               {fmt12Hour(s.start)} – {fmt12Hour(s.end)}<br/>
@@ -1352,7 +1436,8 @@ function App() {
         "Download Excel" opens directly in Excel, Numbers, or Google Sheets, with a styled header.<br/>
         "Download PDF Invoice" saves the invoice directly as a PDF — no print dialog needed.<br/>
         "Export history" remembers past exports on this device/browser only — not synced elsewhere.<br/>
-        This tracker resets if you close or reload the tab — export before you leave.
+        Your project, rate, and sessions auto-save on this device as you work, including a punch that's still running — closing or reloading the tab won't lose them.<br/>
+        Use "start new timecard" when you're ready to clear everything and begin the next one.
       </div>
     </div>
   );
