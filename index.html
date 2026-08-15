@@ -299,8 +299,8 @@
     margin-bottom: 10px;
   }
   .session-date-field {
-    flex: 1;
-    min-width: 130px;
+    flex: 0 1 170px;
+    min-width: 170px;
   }
   .session-date-field label {
     display: block;
@@ -312,6 +312,8 @@
   }
   .session-date-field input[type="date"] {
     width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     font-family: var(--mono);
     font-size: 13px;
     padding: 7px 8px;
@@ -324,6 +326,7 @@
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
+    flex: 0 0 auto;
   }
 
   .time-row {
