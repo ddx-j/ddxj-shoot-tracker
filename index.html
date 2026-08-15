@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shoot & Edit Log">
+<meta name="theme-color" content="#1c1a17">
 </head>
 <body>
 <div id="root"></div>
@@ -330,6 +338,24 @@
     gap: 6px;
     flex-wrap: wrap;
     flex: 0 0 auto;
+  }
+
+  @media (max-width: 480px) {
+    .date-actions-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .session-date-field {
+      flex: 1 1 auto;
+      width: 100%;
+    }
+    .session-actions {
+      justify-content: flex-end;
+      width: 100%;
+    }
+    .invoice-meta-row {
+      flex-direction: column;
+    }
   }
 
   .time-row {
